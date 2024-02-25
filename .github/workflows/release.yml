@@ -10,10 +10,6 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
 
-    environment:
-      name: PyPI
-      url: https://pypi.org/project/acrm/
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -39,7 +35,30 @@ jobs:
           artifacts: "dist/*"
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload release distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dists
+          path: dist/
+
+  publish:
+    name: Publish on PyPI
+    runs-on: ubuntu-latest
+    needs:
+      - release
+    permissions:
+      id-token: write
+
+    environment:
+      name: PyPI
+      url: https://pypi.org/project/acrm/
+
+    steps:
+      - name: Retrieve release distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: release-dists
+          path: dist/
+
       - name: Publish to PyPI
-        env:
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: poetry publish -u __token__ -p "$PYPI_TOKEN"
+        uses: pypa/gh-action-pypi-publish@release/v1
