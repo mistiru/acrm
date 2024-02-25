@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+\.[0-9]+.[0-9]+'
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    environment:
+      name: PyPI
+      url: https://pypi.org/project/acrm/
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          cache: pip
+          python-version: 3.11
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v9
+
+      - name: Check version consistency
+        run: |
+          [[ "$(poetry version -s)" == "$(git describe --tags)" ]]
+
+      - name: Build project
+        run: poetry build
+
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "dist/*"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to PyPI
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: poetry publish -u __token__ -p "$PYPI_TOKEN"
