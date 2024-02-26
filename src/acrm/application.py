@@ -3,6 +3,7 @@ from cleo.helpers import option
 
 from acrm.__version__ import __version__
 from acrm.commands.ls import LsCommand
+from acrm.commands.rm import RmCommand
 
 
 def main():
@@ -34,6 +35,7 @@ def main():
         ),
     ])
     application.add(LsCommand())
+    application.add(RmCommand())
     application.run()
 
 
