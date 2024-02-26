@@ -36,15 +36,24 @@ class RepoConfig:
         return db_file.resolve()
 
 
+@dataclass
+class Package:
+    name: str
+    version: str
+    file: Path | None
+    sig_file: Path | None
+
+
 class BaseCommand(Command):
 
     def __init__(self) -> None:
-        self._config: RepoConfig | None = None
         super().__init__()
+        self._repo_config: RepoConfig | None = None
+        self._packages: dict[str, Package] | None = None
 
     @property
-    def config(self) -> RepoConfig:
-        if self._config is None:
+    def repo_config(self) -> RepoConfig:
+        if self._repo_config is None:
             user: str | None = self.option('user')
 
             host: str | None = self.option('host')
@@ -68,7 +77,7 @@ class BaseCommand(Command):
             ).stdout.strip().decode()
             remote_root /= arch
 
-            self._config = RepoConfig(
+            self._repo_config = RepoConfig(
                 user=user,
                 host=host,
                 remote_root=remote_root,
@@ -76,16 +85,56 @@ class BaseCommand(Command):
                 arch=arch,
             )
 
-        return self._config
+        return self._repo_config
 
-    def fetch_repository(self) -> None:
+    def _fetch_repository(self) -> None:
         self.line('Fetching repository...', style='info')
 
         command = (f'rsync -rtlvH --delete --safe-links'
-                   f' "{self.config.full_host}:{self.config.remote_root}/"'
-                   f' "{self.config.local_path}"')
+                   f' "{self.repo_config.full_host}:{self.repo_config.remote_root}/"'
+                   f' "{self.repo_config.local_path}"')
         if subprocess.run(
             shlex.split(command),
-            stdout=subprocess.DEVNULL if not self.io.is_verbose() else None,
+            stdout=subprocess.DEVNULL,
         ).returncode:
+            self.line_error("An error occurred while fetching repository", style='error')
             sys.exit(1)
+
+    @property
+    def packages(self) -> dict[str, Package]:
+        if self._packages is None:
+            self._fetch_repository()
+
+            command = f'tar tf "{self.repo_config.db_file}"'
+            raw_list: str = subprocess.run(
+                shlex.split(command),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            ).stdout.decode().strip()
+            raw_packages: list[str] = [
+                line.rstrip('/')
+                for line in raw_list.split('\n')
+                if not line.endswith('desc')
+            ]
+
+            self._packages: dict[str, Package] = {}
+            for raw_package in raw_packages:
+                name, *rest = raw_package.rsplit('-', maxsplit=2)
+                version = '-'.join(rest)
+                file = next((
+                    file
+                    for file in self.repo_config.local_path.glob(f'{raw_package}-*.pkg.tar.*')
+                    if not file.name.endswith('.sig')
+                ), None)
+                sig_file = next((
+                    file
+                    for file in self.repo_config.local_path.glob(f'{raw_package}-*.pkg.tar.*.sig')
+                ), None)
+                self._packages[name] = Package(
+                    name=name,
+                    version=version,
+                    file=file,
+                    sig_file=sig_file,
+                )
+
+        return self._packages
