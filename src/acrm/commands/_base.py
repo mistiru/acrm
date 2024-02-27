@@ -139,10 +139,15 @@ class BaseCommand(Command):
 
         return self._packages
 
-    def remove_package(self, package_name: str, key: str | None) -> None:
-        if package_name not in self.packages:
+    def get_package(self, package_name: str) -> Package:
+        try:
+            return self.packages[package_name]
+        except KeyError:
             self.line_error(f"Package \"{package_name}\" not found in repository", style='error')
             sys.exit(1)
+
+    def remove_package(self, package_name: str, key: str | None) -> None:
+        package = self.get_package(package_name=package_name)
 
         key_option = f'-k {key}' if key else ''
         command = (f'repo-remove -v -s {key_option}'
@@ -155,9 +160,9 @@ class BaseCommand(Command):
         ).returncode:
             self.line_error("An error occurred while removing the package", style='error')
             sys.exit(1)
-        if (file := self.packages[package_name].file) is not None:
+        if (file := package.file) is not None:
             file.unlink()
-        if (sig_file := self.packages[package_name].sig_file) is not None:
+        if (sig_file := package.sig_file) is not None:
             sig_file.unlink()
 
     def update_repository(self) -> None:
