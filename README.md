@@ -50,6 +50,33 @@ acrm -H my_vps_or_nas -r /home/vps_user/path/to/my/repository ls
 +------ repository ------+
 | Package name | version |
 +--------------+---------+
-| acrm         | 0.1.0-1 |
+| acrm         | 0.1.1-1 |
 +--------------+---------+
+```
+
+### add
+
+Add a package to the repository.
+
+```bash
+acrm -H my_vps_or_nas -r /home/vps_user/path/to/my/repository add -k gpg@example.com acrm-0.1.1-1-x86_64.pgk.tar.zst
+```
+
+The `-k key_identifier` option allows to specify the gpg key used to sign the package and the repository.
+If omitted, gpg will automatically choose a default one.
+
+### rm
+
+Remove a package from the repository.
+
+```bash
+acrm -H my_vps_or_nas -r /home/vps_user/path/to/my/repository rm -k gpg@example.com acrm
+```
+
+### dl
+
+Download a package from the repository.
+
+```bash
+acrm -H my_vps_or_nas -r /home/vps_user/path/to/my/repository dl acrm
 ```
