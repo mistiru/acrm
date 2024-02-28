@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "acrm"
-version = "0.1.0"
+version = "0.1.1"
 description = "An Arch Linux custom repository manager"
 authors = ["misitru <dev@mistiru.me>"]
 license = "MIT"
