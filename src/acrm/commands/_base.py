@@ -1,4 +1,5 @@
 import shlex
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -138,6 +139,48 @@ class BaseCommand(Command):
                 )
 
         return self._packages
+
+    def add_package(self, package_file_name: str, key: str | None) -> None:
+        # Check if file exists
+        package_file = Path(package_file_name).resolve()
+        if not package_file.is_file():
+            self.line_error(f"{package_file.name} is not a file", style='error')
+            sys.exit(1)
+
+        # Check if package already exists
+        _package = next((
+            package
+            for package in self.packages.values()
+            if package.file.name == package_file.name
+        ), None)
+        if _package is not None:
+            self.line_error(f"Package {_package.file} ({_package.version}) already exists in repository", style='error')
+            sys.exit(1)
+
+        # Copy new package in repository directory
+        package_file = Path(shutil.copy(package_file, self.repo_config.local_path))
+
+        # Sign the package
+        sig_file = package_file.with_name(package_file.name + '.sig')
+        sig_file.unlink(missing_ok=True)
+        key_option = f'--default-key {key}' if key else ''
+        command = f'gpg {key_option} --detach-sign {package_file}'
+        if subprocess.run(shlex.split(command)).returncode:
+            self.line_error("An error occurred while signing the package", style='error')
+            sys.exit(1)
+
+        # Add package to the repo
+        key_option = f'-k {key}' if key else ''
+        command = (f'repo-add -v -s -R -p {key_option}'
+                   f' "{self.repo_config.db_file}"'
+                   f' "{package_file}"')
+        if subprocess.run(
+            shlex.split(command),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).returncode:
+            self.line_error("An error occurred while adding the package", style='error')
+            sys.exit(1)
 
     def get_package(self, package_name: str) -> Package:
         try:
