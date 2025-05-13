@@ -1,6 +1,6 @@
 [project]
 name = "acrm"
-version = "0.1.2"
+version = "0.1.3"
 description = "An Arch Linux custom repository manager"
 authors = [
     { name = "mistiru", email = "dev@mistiru.me" },
